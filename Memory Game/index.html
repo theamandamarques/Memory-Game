@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Memória</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-size: cover;
+    background-color: #a7164e;
+    background-image: url('fundo de memoria.jpg'); 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.game-container {
+    width: 400px;
+    background-color: #000000;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    max-width: 500px;
+    width: 100%; 
+}
+
+h1 {
+    margin-bottom: 20px;
+    color: #ca1a95;
+}
+
+.score-panel {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    font-size: 18px;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: 10px;
+}
+
+.card {
+    width: 100px;
+    height: 100px;
+    background-color: #e01e72;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 32px;
+    color: white;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.5s;
+}
+
+.card.flipped {
+    background-color: #edf2f3;
+    color: #000000;
+}
+
+.card.match {
+    background-color: #000000;
+    color: white;
+    cursor: default;
+}
+
+.card .card-face {
+    position: absolute;
+    backface-visibility: hidden;
+}
+
+.card .front {
+    transform: rotateY(180deg);
+}
+
+.card.flipped .front {
+    transform: rotateY(0);
+}
+
+.card.flipped .back {
+    transform: rotateY(180deg);
+}
+
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Jogo da Memória</h1>
+        <div class="score-panel">
+            <span>Movimentos: <span id="move-counter">0</span></span>
+            <span>Tempo: <span id="timer">00:00</span></span>
+        </div>
+        <div class="card-grid" id="card-grid">
+            <!-- As cartas serão geradas dinamicamente -->
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        const cardGrid = document.getElementById('card-grid');
+const moveCounter = document.getElementById('move-counter');
+const timerDisplay = document.getElementById('timer');
+
+let moves = 0;
+let hasFlippedCard = false;
+let firstCard, secondCard;
+let lockBoard = false;
+let matchCount = 0;
+let timer;
+let seconds = 0;
+
+// Cartas do jogo (pares de emojis)
+const cards = [
+    '🍎', '🍎', '🍌', '🍌', '🍇', '🍇', '🍉', '🍉',
+    '🍓', '🍓', '🍒', '🍒', '🍍', '🍍', '🍑', '🍑'
+];
+
+// Embaralha as cartas
+function shuffle(array) {
+    array.sort(() => Math.random() - 0.5);
+}
+
+// Inicia o jogo
+function startGame() {
+    shuffle(cards);
+    cardGrid.innerHTML = '';
+    cards.forEach(card => {
+        const cardElement = document.createElement('div');
+        cardElement.classList.add('card');
+        cardElement.innerHTML = `
+            <div class="card-face front">${card}</div>
+            <div class="card-face back">❓</div>
+        `;
+        cardElement.addEventListener('click', flipCard);
+        cardGrid.appendChild(cardElement);
+    });
+    resetGame();
+}
+
+// Vira uma carta
+function flipCard() {
+    if (lockBoard) return;
+    if (this === firstCard) return;
+
+    this.classList.add('flipped');
+
+    if (!hasFlippedCard) {
+        // Primeira carta virada
+        hasFlippedCard = true;
+        firstCard = this;
+    } else {
+        // Segunda carta virada
+        secondCard = this;
+        checkForMatch();
+    }
+}
+
+// Verifica se as cartas viradas são iguais
+function checkForMatch() {
+    if (firstCard.innerHTML === secondCard.innerHTML) {
+        disableCards();
+        matchCount++;
+        if (matchCount === cards.length / 2) {
+            clearInterval(timer);
+            alert('Parabéns! Você completou o jogo!');
+        }
+    } else {
+        unflipCards();
+    }
+    updateMoves();
+}
+
+// Desabilita as cartas correspondentes
+function disableCards() {
+    firstCard.removeEventListener('click', flipCard);
+    secondCard.removeEventListener('click', flipCard);
+    resetBoard();
+}
+
+// Desvira as cartas não correspondentes
+function unflipCards() {
+    lockBoard = true;
+    setTimeout(() => {
+        firstCard.classList.remove('flipped');
+        secondCard.classList.remove('flipped');
+        resetBoard();
+    }, 1000);
+}
+
+// Reseta o estado do tabuleiro após cada jogada
+function resetBoard() {
+    [hasFlippedCard, lockBoard] = [false, false];
+    [firstCard, secondCard] = [null, null];
+}
+
+// Atualiza o contador de movimentos
+function updateMoves() {
+    moves++;
+    moveCounter.textContent = moves;
+}
+
+// Reinicia o jogo
+function resetGame() {
+    moves = 0;
+    moveCounter.textContent = moves;
+    matchCount = 0;
+    clearInterval(timer);
+    seconds = 0;
+    startTimer();
+}
+
+// Inicia o temporizador
+function startTimer() {
+    timer = setInterval(() => {
+        seconds++;
+        let minutes = Math.floor(seconds / 60);
+        let displaySeconds = seconds % 60;
+        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${displaySeconds.toString().padStart(2, '0')}`;
+    }, 1000);
+}
+
+// Inicializa o jogo ao carregar a página
+document.addEventListener('DOMContentLoaded', startGame);
+
+    </script>
+</body>
+</html>
